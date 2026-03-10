@@ -115,11 +115,72 @@
                 padding: 1rem;
             }
         }
+
+        /* Estilos para el historial */
+        .partida-item {
+            transition: all 0.3s ease;
+        }
+        
+        .partida-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 
 <body
     class="bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 min-h-screen flex items-center justify-center p-2 sm:p-4">
+
+    <!-- Pantalla de inicio con gestión de partidas -->
+    <div id="pantalla-inicio" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" style="display: flex;">
+        <div class="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 text-center max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <i class="fas fa-globe-americas text-5xl sm:text-6xl text-blue-500 mb-4"></i>
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">🌍 Capital Quest</h2>
+            
+            <!-- Formulario de nueva partida -->
+            <div id="formulario-nueva-partida" class="mb-6">
+                <p class="text-gray-600 mb-4">Configura tu nueva partida</p>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2 text-left">
+                        <i class="fas fa-hashtag mr-2 text-blue-500"></i>Nombre de partida (opcional)
+                    </label>
+                    <input type="text" id="numero-partida" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-base focus:border-blue-400 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="Ej: #001">
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <button id="btn-continuar-juego" class="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold py-4 px-8 rounded-2xl text-lg shadow-lg transition transform hover:scale-105 w-full flex items-center justify-center gap-3">
+                        <i class="fas fa-play-circle"></i>
+                        Continuar al juego
+                    </button>
+                    
+                    <button id="btn-ver-partidas" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-8 rounded-2xl text-lg shadow-lg transition transform hover:scale-105 w-full flex items-center justify-center gap-3">
+                        <i class="fas fa-history"></i>
+                        Ver mis partidas
+                    </button>
+                </div>
+            </div>
+
+            <!-- Historial de partidas (inicialmente oculto) -->
+            <div id="historial-partidas" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">
+                        <i class="fas fa-history mr-2 text-purple-500"></i>
+                        Mis Partidas
+                    </h3>
+                    <button id="btn-cerrar-historial" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div id="lista-partidas" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    <!-- Las partidas se cargarán aquí dinámicamente -->
+                </div>
+                
+                
+            </div>
+        </div>
+    </div>
 
     <div class="container max-w-4xl mx-auto">
         <!-- Tarjeta principal -->
@@ -198,7 +259,7 @@
             </div>
 
             <!-- Botones de acción -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-6 sm:mb-8">
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3 mb-6 sm:mb-8">
                 <button id="btnResolver"
                     class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition transform hover:scale-105 flex items-center justify-center gap-2 text-sm sm:text-base">
                     <i class="fas fa-lightbulb"></i> 
@@ -213,6 +274,11 @@
                     class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition transform hover:scale-105 flex items-center justify-center gap-2 text-sm sm:text-base">
                     <i class="fas fa-redo-alt"></i> 
                     <span>Reiniciar</span>
+                </button>
+                <button id="btnAbandonar"
+                    class="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition transform hover:scale-105 flex items-center justify-center gap-2 text-sm sm:text-base">
+                    <i class="fas fa-door-open"></i> 
+                    <span>Abandonar</span>
                 </button>
             </div>
 
@@ -438,15 +504,15 @@
             { countryName: "Zimbabue", capital: "Harare" }
         ];
 
-        //  ---------- ESTADO DE LA PARTIDA ----------
-        let paisesDisponibles = []; // Países que aún no se han respondido
-        let paisesRespondidos = []; // Países ya respondidos (con su resultado)
+        // ---------- VARIABLES GLOBALES ----------
+        // Estado de la partida
+        let paisesDisponibles = [];
+        let paisesRespondidos = [];
         let paisActual = null;
-
-        // Estadísticas
         let aciertos = 0;
         let fallos = 0;
-
+        let numeroPartida = '';
+        
         // Timer
         let timerInterval = null;
         let tiempoRestante = 30;
@@ -454,12 +520,23 @@
         let respuestaDada = false;
 
         // Elementos DOM
+        const pantallaInicio = document.getElementById('pantalla-inicio');
+        const formularioNuevaPartida = document.getElementById('formulario-nueva-partida');
+        const historialPartidas = document.getElementById('historial-partidas');
+        const listaPartidas = document.getElementById('lista-partidas');
+        const numeroPartidaInput = document.getElementById('numero-partida');
+        const btnContinuarJuego = document.getElementById('btn-continuar-juego');
+        const btnVerPartidas = document.getElementById('btn-ver-partidas');
+        const btnCerrarHistorial = document.getElementById('btn-cerrar-historial');
+       
+        
         const paisEl = document.getElementById('pais');
         const respuestaInput = document.getElementById('respuesta');
         const btnEnviar = document.getElementById('btnEnviar');
         const btnResolver = document.getElementById('btnResolver');
         const btnSiguiente = document.getElementById('btnSiguiente');
         const btnReiniciar = document.getElementById('btnReiniciar');
+        const btnAbandonar = document.getElementById('btnAbandonar');
         const mensajeEl = document.getElementById('mensaje');
         const timerEl = document.getElementById('timer');
         const aciertosEl = document.getElementById('aciertos');
@@ -473,8 +550,85 @@
         const totalAciertosFinal = document.getElementById('total-aciertos-final');
         const totalFallosFinal = document.getElementById('total-fallos-final');
 
-        // ---------- FUNCIONES DE INICIALIZACIÓN ----------
+        // ---------- FUNCIONES DE LOCALSTORAGE ----------
+        function guardarPartidaEnHistorial(estado) {
+            const partidas = JSON.parse(localStorage.getItem('capitalQuestPartidas') || '[]');
+            
+            const totalPaises = paises.length;
+            const respondidos = aciertos + fallos;
+            
+            const nuevaPartida = {
+                id: Date.now(),
+                numero: estado.numeroPartida || generarNumeroPartida(),
+                fecha: new Date().toLocaleString(),
+                aciertos: estado.aciertos,
+                fallos: estado.fallos,
+                progreso: `${respondidos}/${totalPaises}`,
+                completada: estado.completada || false
+            };
+            
+            partidas.unshift(nuevaPartida); // Añadir al principio
+            localStorage.setItem('capitalQuestPartidas', JSON.stringify(partidas));
+        }
+
+        function generarNumeroPartida() {
+            const partidas = JSON.parse(localStorage.getItem('capitalQuestPartidas') || '[]');
+            const nextNum = partidas.length + 1;
+            return `#${nextNum.toString().padStart(3, '0')}`;
+        }
+
+        function cargarHistorial() {
+            const partidas = JSON.parse(localStorage.getItem('capitalQuestPartidas') || '[]');
+            
+            if (partidas.length === 0) {
+                listaPartidas.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-folder-open text-4xl mb-3 opacity-50"></i>
+                        <p>No hay partidas guardadas</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Ordenar por fecha (más reciente primero)
+            partidas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+            listaPartidas.innerHTML = partidas.map(partida => `
+                <div class="partida-item bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-bold text-blue-600">${partida.numero}</span>
+                        <span class="text-xs text-gray-500">${partida.fecha}</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-sm">
+                        <div class="text-green-600">
+                            <i class="fas fa-check-circle mr-1"></i>
+                            ${partida.aciertos}
+                        </div>
+                        <div class="text-red-600">
+                            <i class="fas fa-times-circle mr-1"></i>
+                            ${partida.fallos}
+                        </div>
+                        <div class="text-blue-600">
+                            <i class="fas fa-chart-line mr-1"></i>
+                            ${partida.progreso}
+                        </div>
+                    </div>
+                    <div class="mt-2 text-xs text-gray-400">
+                        ${partida.completada ? '✅ Completada' : '⏹️ Abandonada'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ---------- FUNCIONES DEL JUEGO ----------
         function iniciarNuevaPartida() {
+            // Generar número de partida si no se especificó
+            if (!numeroPartidaInput.value.trim()) {
+                numeroPartida = generarNumeroPartida();
+            } else {
+                numeroPartida = numeroPartidaInput.value.trim();
+            }
+
             // Filtrar países que tienen capital
             const paisesConCapital = paises.filter(p => p.capital && p.capital.trim() !== '');
 
@@ -488,6 +642,31 @@
             actualizarEstadisticas();
             ocultarMensajeCompletado();
             cargarNuevoPais();
+            
+            // Ocultar pantalla de inicio
+            pantallaInicio.style.display = 'none';
+        }
+
+        function abandonarPartida() {
+            if (aciertos > 0 || fallos > 0) {
+                // Guardar la partida en el historial
+                guardarPartidaEnHistorial({
+                    numeroPartida: numeroPartida,
+                    aciertos: aciertos,
+                    fallos: fallos,
+                    completada: false
+                });
+            }
+            
+            // Volver a la pantalla de inicio
+            detenerTimer();
+            pantallaInicio.style.display = 'flex';
+            
+            // Limpiar el input de número de partida
+            numeroPartidaInput.value = '';
+            
+            // Mostrar mensaje
+            mostrarMensaje('🏁 Partida abandonada', 'info');
         }
 
         function ocultarMensajeCompletado() {
@@ -503,6 +682,14 @@
             totalAciertosFinal.textContent = aciertos;
             totalFallosFinal.textContent = fallos;
             detenerTimer();
+            
+            // Guardar partida completada
+            guardarPartidaEnHistorial({
+                numeroPartida: numeroPartida,
+                aciertos: aciertos,
+                fallos: fallos,
+                completada: true
+            });
         }
 
         function actualizarEstadisticas() {
@@ -518,7 +705,7 @@
             progresoTexto.textContent = `${totalRespondidos}/${totalPaises} países`;
         }
 
-        // ---------- FUNCIONES DEL JUEGO ----------
+        // ---------- FUNCIONES DEL TIMER ----------
         function detenerTimer() {
             if (timerInterval) {
                 clearInterval(timerInterval);
@@ -537,13 +724,10 @@
 
                 if (tiempoRestante <= 0) {
                     detenerTimer();
-                    // IMPORTANTE: Verificar que no se haya respondido ya
                     if (!respuestaDada && paisActual && paisesDisponibles.length > 0) {
-                        // Tiempo agotado - se considera fallo
                         respuestaDada = true;
                         fallos++;
 
-                        // Eliminar el país de disponibles
                         const paisRespondido = paisesDisponibles.shift();
                         paisesRespondidos.push({
                             ...paisRespondido,
@@ -554,7 +738,6 @@
                         mostrarMensaje(`⏰ ¡Tiempo agotado! La capital de ${paisActual.countryName} es ${paisActual.capital}`, 'error', true);
                         deshabilitarInput();
 
-                        // Verificar si la partida terminó
                         if (paisesDisponibles.length === 0) {
                             mostrarMensajeCompletado();
                         }
@@ -572,6 +755,7 @@
             }
         }
 
+        // ---------- FUNCIONES DE INTERFAZ ----------
         function deshabilitarInput() {
             respuestaInput.disabled = true;
             btnEnviar.disabled = true;
@@ -599,12 +783,11 @@
                 .trim()
                 .toLowerCase()
                 .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "") // Elimina acentos
-                .replace(/[.,'";\-()]/g, ''); // Elimina signos de puntuación
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[.,'";\-()]/g, '');
         }
 
         function mostrarMensaje(texto, tipo = 'info', mantenerVisible = false) {
-            // Limpiar clases anteriores
             mensajeEl.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-blue-100', 'text-blue-800', 'bg-yellow-100', 'text-yellow-800');
             mensajeEl.textContent = texto;
 
@@ -618,7 +801,6 @@
                 mensajeEl.classList.add('bg-yellow-100', 'text-yellow-800');
             }
 
-            // Limpiar timeout anterior si existe
             if (window.timeoutMensaje) {
                 clearTimeout(window.timeoutMensaje);
             }
@@ -631,15 +813,12 @@
         }
 
         function cargarNuevoPais() {
-            // Verificar si ya no quedan países
             if (paisesDisponibles.length === 0) {
                 mostrarMensajeCompletado();
                 return;
             }
 
-            // Tomar el siguiente país (el primero del array)
             paisActual = paisesDisponibles[0];
-
             paisEl.textContent = paisActual.countryName;
             respuestaInput.value = '';
             respuestaDada = false;
@@ -659,14 +838,12 @@
             const capitalCorrecta = paisActual.capital || '';
             const esCorrecto = normalizarTexto(respuestaUsuario) === normalizarTexto(capitalCorrecta);
 
-            // Registrar el resultado
             if (esCorrecto) {
                 aciertos++;
             } else {
                 fallos++;
             }
 
-            // Mover el país de disponibles a respondidos
             const paisRespondido = paisesDisponibles.shift();
             paisesRespondidos.push({
                 ...paisRespondido,
@@ -681,13 +858,27 @@
                 mostrarMensaje(`❌ Incorrecto. La capital de ${paisActual.countryName} es ${capitalCorrecta}`, 'error', true);
             }
 
-            // Verificar si la partida terminó
             if (paisesDisponibles.length === 0) {
                 mostrarMensajeCompletado();
             }
         }
 
         // ---------- EVENTOS ----------
+        btnContinuarJuego.addEventListener('click', () => {
+            iniciarNuevaPartida();
+        });
+
+        btnVerPartidas.addEventListener('click', () => {
+            formularioNuevaPartida.classList.add('hidden');
+            historialPartidas.classList.remove('hidden');
+            cargarHistorial();
+        });
+
+        btnCerrarHistorial.addEventListener('click', () => {
+            historialPartidas.classList.add('hidden');
+            formularioNuevaPartida.classList.remove('hidden');
+        });
+
         btnEnviar.addEventListener('click', () => {
             if (!paisActual || respuestaDada || paisesDisponibles.length === 0) return;
             const respuesta = respuestaInput.value.trim();
@@ -708,15 +899,11 @@
         btnResolver.addEventListener('click', () => {
             if (!paisActual || respuestaDada || paisesDisponibles.length === 0) return;
 
-            // Marcar como respondida (fallo)
             respuestaDada = true;
             detenerTimer();
             deshabilitarInput();
-
-            // Registrar fallo
             fallos++;
 
-            // Mover el país de disponibles a respondidos
             const paisRespondido = paisesDisponibles.shift();
             paisesRespondidos.push({
                 ...paisRespondido,
@@ -725,18 +912,15 @@
 
             actualizarEstadisticas();
 
-            // Mostrar la capital
             const capital = paisActual.capital || 'desconocida';
             mostrarMensaje(`🔍 La capital de ${paisActual.countryName} es ${capital}`, 'resolver', true);
 
-            // Verificar si la partida terminó
             if (paisesDisponibles.length === 0) {
                 mostrarMensajeCompletado();
             }
         });
 
         btnSiguiente.addEventListener('click', () => {
-            // Solo permitir "Siguiente" si ya se respondió la pregunta actual
             if (!respuestaDada) {
                 mostrarMensaje('⚠️ Primero responde la pregunta actual', 'info');
                 return;
@@ -754,9 +938,12 @@
             iniciarNuevaPartida();
         });
 
-        // Inicializar el juego
-        iniciarNuevaPartida();
+        btnAbandonar.addEventListener('click', () => {
+            abandonarPartida();
+        });
 
+        // Cargar historial al inicio por si hay datos guardados
+        cargarHistorial();
     </script>
 </body>
 
